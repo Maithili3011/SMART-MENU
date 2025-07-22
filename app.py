@@ -4,18 +4,36 @@ import os
 import time
 from datetime import datetime
 
-# Hide sidebar and Streamlit default styling
+# Page config
 st.set_page_config(page_title="Smart Table Order", layout="wide")
-hide_sidebar_style = """
+
+# Hide sidebar + enhance styling
+custom_css = """
     <style>
         [data-testid="stSidebar"] { display: none; }
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
+        html, body, [class*="css"]  {
+            font-size: 18px;
+        }
+        .stButton>button {
+            height: 2.5em;
+            font-size: 18px;
+        }
+        .stMarkdown {
+            font-size: 18px;
+        }
+        .stButton>button:hover {
+            background-color: #FF4B4B;
+            color: white;
+            transform: scale(1.05);
+            transition: 0.2s ease-in-out;
+        }
     </style>
 """
-st.markdown(hide_sidebar_style, unsafe_allow_html=True)
+st.markdown(custom_css, unsafe_allow_html=True)
 
-# Get absolute path
+# File paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MENU_FILE = os.path.join(BASE_DIR, "menu.json")
 ORDERS_FILE = os.path.join(BASE_DIR, "orders.json")
@@ -50,6 +68,9 @@ else:
 if "cart" not in st.session_state:
     st.session_state.cart = {}
 
+# Alert placeholder
+alert = st.empty()
+
 # Show menu
 st.subheader("📋 Menu")
 for category, items in menu.items():
@@ -68,16 +89,20 @@ for category, items in menu.items():
                     if name in st.session_state.cart:
                         if st.session_state.cart[name]["quantity"] > 1:
                             st.session_state.cart[name]["quantity"] -= 1
+                            alert.info(f"➖ Decreased {name}")
                         else:
                             del st.session_state.cart[name]
+                            alert.warning(f"❌ Removed {name}")
                     st.rerun()
 
             with col3:
                 if st.button("➕", key=f"plus-{category}-{name}"):
                     if name not in st.session_state.cart:
                         st.session_state.cart[name] = {"price": price, "quantity": 1}
+                        alert.success(f"✔️ Added {name}")
                     else:
                         st.session_state.cart[name]["quantity"] += 1
+                        alert.success(f"➕ Increased {name}")
                     st.rerun()
 
             with col4:
@@ -96,12 +121,15 @@ if st.session_state.cart:
             if st.button("➖", key=f"decrease-{name}"):
                 if item["quantity"] > 1:
                     st.session_state.cart[name]["quantity"] -= 1
+                    alert.info(f"➖ Decreased {name}")
                 else:
                     del st.session_state.cart[name]
+                    alert.warning(f"❌ Removed {name}")
                 st.rerun()
         with col3:
             if st.button("➕", key=f"increase-{name}"):
                 st.session_state.cart[name]["quantity"] += 1
+                alert.success(f"➕ Increased {name}")
                 st.rerun()
         with col4:
             subtotal = item["price"] * item["quantity"]
@@ -125,7 +153,8 @@ if st.session_state.cart:
         with open(ORDERS_FILE, "w") as f:
             json.dump(orders, f, indent=2)
 
-        st.success("✅ Order Placed!")
+        st.success("✅ Order Placed Successfully!")
+        st.balloons()
         del st.session_state.cart
         st.rerun()
 else:
@@ -151,7 +180,7 @@ for order in reversed(orders):
                 order["status"] = "Cancelled"
                 with open(ORDERS_FILE, "w") as f:
                     json.dump(orders, f, indent=2)
-                st.warning("Order cancelled.")
+                st.warning("⚠️ Order has been cancelled.")
                 st.rerun()
         st.markdown("---")
 
