@@ -1,0 +1,15 @@
+{
+  "Starters": [
+    {"name": "Paneer Tikka", "price": 120},
+    {"name": "Spring Rolls", "price": 100}
+  ],
+  "Main Course": [
+    {"name": "Butter Chicken", "price": 250},
+    {"name": "Veg Biryani", "price": 180},
+    {"name": "Paneer Handi", "price": 230}
+  ],
+  "Beverages": [
+    {"name": "Coke", "price": 40},
+    {"name": "Mango Lassi", "price": 60}
+  ]
+}
