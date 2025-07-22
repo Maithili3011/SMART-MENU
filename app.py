@@ -66,38 +66,45 @@ menu = json.load(open(MENU_FILE)) if os.path.exists(MENU_FILE) else {}
 orders = json.load(open(ORDERS_FILE)) if os.path.exists(ORDERS_FILE) else []
 
 # PDF Bill Generator
-def generate_bill_pdf(order):
-    filename = f"/mnt/data/bill_table_{order['table']}_{order['timestamp'].replace(' ', '_').replace(':','-')}.pdf"
-    c = canvas.Canvas(filename, pagesize=letter)
-    width, height = letter
 
+def generate_bill_pdf(order):
+    filename = f"bill_table_{order['table']}.pdf"
+    file_path = f"/mnt/data/{filename}"
+
+    c = canvas.Canvas(file_path)
     c.setFont("Helvetica-Bold", 16)
-    c.drawString(200, height - 50, "🧾 Restaurant Bill")
+    c.drawString(200, 800, "Smart Table Billing Receipt")
 
     c.setFont("Helvetica", 12)
-    c.drawString(50, height - 80, f"Table No: {order['table']}")
-    c.drawString(350, height - 80, f"Date: {order['timestamp']}")
+    c.drawString(50, 770, f"Table: {order['table']}")
+    c.drawString(300, 770, f"Date: {order['timestamp']}")
 
-    c.drawString(50, height - 110, "Items:")
-    y = height - 140
+    y = 740
+    c.drawString(50, y, "Item")
+    c.drawString(250, y, "Qty")
+    c.drawString(300, y, "Price")
+    c.drawString(400, y, "Total")
+
+    y -= 20
     total = 0
-
-    for item, details in order["items"].items():
-        qty = details["quantity"]
-        price = details["price"]
+    for name, item in order["items"].items():
+        qty = item["quantity"]
+        price = item["price"]
         subtotal = qty * price
         total += subtotal
-        c.drawString(60, y, f"{item} x {qty}")
-        c.drawRightString(550, y, f"₹{subtotal}")
+
+        c.drawString(50, y, name)
+        c.drawString(250, y, str(qty))
+        c.drawString(300, y, f"₹{price}")
+        c.drawString(400, y, f"₹{subtotal}")
         y -= 20
 
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(50, y - 20, "Total:")
-    c.drawRightString(550, y - 20, f"₹{total}")
-    c.setFont("Helvetica-Oblique", 10)
-    c.drawString(50, y - 50, "Thank you for dining with us!")
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(300, y - 10, "Grand Total:")
+    c.drawString(400, y - 10, f"₹{total}")
+
     c.save()
-    return filename
+    return file_path
 
 # Welcome
 if "table_number" not in st.session_state:
