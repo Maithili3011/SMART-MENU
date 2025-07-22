@@ -1,3 +1,4 @@
+# Save this as app.py
 import streamlit as st
 import json
 import os
@@ -6,10 +7,10 @@ from datetime import datetime
 from streamlit_lottie import st_lottie
 import requests
 
-# Set up page
+# Page settings
 st.set_page_config(page_title="Smart Table Order", layout="wide", page_icon="🍽️")
 
-# Custom CSS
+# Custom UI Styling
 st.markdown("""
 <style>
     body {
@@ -17,8 +18,7 @@ st.markdown("""
         color: #ecf0f1;
     }
     [data-testid="stSidebar"] { display: none; }
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
+    #MainMenu, footer {visibility: hidden;}
     .main-title {
         font-size: 42px;
         font-weight: bold;
@@ -27,29 +27,31 @@ st.markdown("""
         margin-bottom: 10px;
     }
     .section-header {
-        font-size: 26px;
+        font-size: 24px;
         font-weight: 600;
         color: #87CEFA;
         margin-top: 25px;
     }
     .menu-card {
         background-color: #1c1f26;
-        padding: 15px;
+        padding: 10px;
         border-radius: 10px;
-        margin-bottom: 15px;
+        margin-bottom: 10px;
     }
-    .menu-img {
-        border-radius: 8px;
+    .menu-title {
+        font-size: 20px;
+        color: #ecf0f1;
+        margin-bottom: 5px;
     }
     .qty-box {
-        font-size: 18px;
+        font-size: 16px;
         color: #87CEEB;
         margin-top: 8px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Load animation
+# Load Lottie animation
 def load_lottie_url(url):
     r = requests.get(url)
     if r.status_code != 200:
@@ -83,9 +85,8 @@ else:
 if "cart" not in st.session_state:
     st.session_state.cart = {}
 
-# Menu section
+# Menu display
 st.markdown("<div class='section-header'>🧾 Menu</div>", unsafe_allow_html=True)
-
 for category, items in menu.items():
     with st.expander(f"📂 {category}", expanded=True):
         for item in items:
@@ -93,13 +94,11 @@ for category, items in menu.items():
             price = item["price"]
             img_url = item.get("image", "")
 
-            col1, col2, col3 = st.columns([4, 1, 1])
-
+            col1, col2, col3 = st.columns([5, 0.8, 1])
             with col1:
-                st.markdown(f"### {name} — ₹{price}", unsafe_allow_html=True)
+                st.markdown(f"<div class='menu-title'>{name} — ₹{price}</div>", unsafe_allow_html=True)
                 if img_url:
-                    st.image(img_url, width=180, caption="", use_column_width=False)
-
+                    st.image(img_url, width=140)
             with col2:
                 if st.button("➖", key=f"minus-{category}-{name}"):
                     if name in st.session_state.cart:
@@ -108,19 +107,17 @@ for category, items in menu.items():
                         else:
                             del st.session_state.cart[name]
                     st.rerun()
-
                 if st.button("➕", key=f"plus-{category}-{name}"):
                     if name not in st.session_state.cart:
                         st.session_state.cart[name] = {"price": price, "quantity": 1}
                     else:
                         st.session_state.cart[name]["quantity"] += 1
                     st.rerun()
-
             with col3:
                 qty = st.session_state.cart[name]["quantity"] if name in st.session_state.cart else 0
                 st.markdown(f"<div class='qty-box'>🛒 Qty: {qty}</div>", unsafe_allow_html=True)
 
-# Cart display
+# Cart
 st.markdown("<div class='section-header'>🛍️ Your Cart</div>", unsafe_allow_html=True)
 if st.session_state.cart:
     total = 0
@@ -128,9 +125,7 @@ if st.session_state.cart:
         subtotal = item["price"] * item["quantity"]
         total += subtotal
         st.markdown(f"<div class='menu-card'>✅ <b>{name}</b> x {item['quantity']} — ₹{subtotal}</div>", unsafe_allow_html=True)
-
     st.markdown(f"### 💰 Total: ₹{total}")
-
     if st.button("✅ Place Order", key="place_order"):
         orders = [o for o in orders if o["table"] != st.session_state.table_number]
         new_order = {
@@ -142,7 +137,6 @@ if st.session_state.cart:
         orders.append(new_order)
         with open(ORDERS_FILE, "w") as f:
             json.dump(orders, f, indent=2)
-
         st.success("🎉 Order Placed Successfully!")
         st.balloons()
         del st.session_state.cart
@@ -171,7 +165,7 @@ for order in reversed(orders):
 if not found:
     st.info("📭 No previous orders found.")
 
-# Auto-refresh
+# Auto-refresh every 10 sec
 with st.empty():
     time.sleep(10)
     st.rerun()
