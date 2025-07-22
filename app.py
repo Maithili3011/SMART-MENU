@@ -6,10 +6,10 @@ from datetime import datetime
 from streamlit_lottie import st_lottie
 import requests
 
-# Set up page
+# Streamlit page config
 st.set_page_config(page_title="Smart Table Order", layout="wide", page_icon="🍽️")
 
-# Custom CSS
+# Custom CSS for UI
 st.markdown("""
 <style>
     body {
@@ -17,8 +17,7 @@ st.markdown("""
         color: #ecf0f1;
     }
     [data-testid="stSidebar"] { display: none; }
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
+    #MainMenu, footer {visibility: hidden;}
     .main-title {
         font-size: 42px;
         font-weight: bold;
@@ -38,30 +37,25 @@ st.markdown("""
         border-radius: 10px;
         margin-bottom: 15px;
     }
-    .menu-img {
-        border-radius: 8px;
-    }
     .qty-box {
-        font-size: 18px;
+        font-size: 16px;
         color: #87CEEB;
         margin-top: 8px;
     }
     .qty-btn button {
-        padding: 0.1em 0.3em !important;
+        padding: 2px 6px !important;
         font-size: 12px !important;
-        height: 26px !important;
-        width: 26px !important;
+        height: 24px !important;
+        width: 24px !important;
         border-radius: 6px !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Load animation
+# Lottie animation loader
 def load_lottie_url(url):
     r = requests.get(url)
-    if r.status_code != 200:
-        return None
-    return r.json()
+    return r.json() if r.status_code == 200 else None
 
 lottie_food = load_lottie_url("https://assets4.lottiefiles.com/packages/lf20_dglA3h.json")
 
@@ -92,7 +86,6 @@ if "cart" not in st.session_state:
 
 # Menu section
 st.markdown("<div class='section-header'>🧾 Menu</div>", unsafe_allow_html=True)
-
 for category, items in menu.items():
     with st.expander(f"📂 {category}", expanded=True):
         for item in items:
@@ -101,14 +94,13 @@ for category, items in menu.items():
             img_url = item.get("image", "")
 
             col1, col2, col3 = st.columns([4, 1, 1])
-
             with col1:
-                st.markdown(f"### {name} — ₹{price}", unsafe_allow_html=True)
+                st.markdown(f"**<span style='font-size:18px'>{name} — ₹{price}</span>**", unsafe_allow_html=True)
                 if img_url:
-                    st.image(img_url, width=180, caption="", use_column_width=False)
+                    st.image(img_url, width=180)
 
             with col2:
-                st.markdown("<div class='qty-btn'>", unsafe_allow_html=True)
+                st.markdown('<div class="qty-btn">', unsafe_allow_html=True)
                 if st.button("➖", key=f"minus-{category}-{name}"):
                     if name in st.session_state.cart:
                         if st.session_state.cart[name]["quantity"] > 1:
@@ -123,7 +115,7 @@ for category, items in menu.items():
                     else:
                         st.session_state.cart[name]["quantity"] += 1
                     st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
 
             with col3:
                 qty = st.session_state.cart[name]["quantity"] if name in st.session_state.cart else 0
