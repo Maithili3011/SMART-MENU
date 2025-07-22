@@ -203,7 +203,7 @@ for order in reversed(orders):
 if not found:
     st.info("📭 No previous orders found.")
 
-# Refresh every 10s
+# Auto refresh
 with st.empty():
     time.sleep(10)
     st.rerun()
