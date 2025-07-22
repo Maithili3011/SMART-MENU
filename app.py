@@ -60,7 +60,10 @@ else:
 
 # Ask for table number
 if "table_number" not in st.session_state:
-    st_lottie(lottie_food, height=200, key="welcome")
+    if lottie_food:
+        st_lottie(lottie_food, height=200, key="welcome")
+    else:
+        st.warning("⚠️ Animation failed to load.")
     st.markdown("<div class='title-style'>🍽️ Smart Table Ordering System</div>", unsafe_allow_html=True)
     table_number = st.text_input("🕧 Enter your Table Number")
     if table_number:
