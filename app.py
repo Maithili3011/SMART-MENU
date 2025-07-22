@@ -38,17 +38,20 @@ st.markdown("""
         border-radius: 10px;
         margin-bottom: 15px;
     }
+    .menu-img {
+        border-radius: 8px;
+    }
     .qty-box {
         font-size: 18px;
         color: #87CEEB;
         margin-top: 8px;
     }
     .qty-btn button {
-        padding: 0.3em 0.6em !important;
-        font-size: 14px !important;
-        height: 32px !important;
-        width: 32px !important;
-        border-radius: 8px !important;
+        padding: 0.1em 0.3em !important;
+        font-size: 12px !important;
+        height: 26px !important;
+        width: 26px !important;
+        border-radius: 6px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -177,7 +180,7 @@ for order in reversed(orders):
 if not found:
     st.info("📭 No previous orders found.")
 
-# Auto-refresh every 10s
+# Auto-refresh
 with st.empty():
     time.sleep(10)
     st.rerun()
