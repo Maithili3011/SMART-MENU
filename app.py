@@ -7,6 +7,7 @@ from streamlit_lottie import st_lottie
 import requests
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
+import tempfile
 
 # Page setup
 st.set_page_config(page_title="Smart Table Order", layout="wide", page_icon="🍽️")
@@ -66,15 +67,11 @@ menu = json.load(open(MENU_FILE)) if os.path.exists(MENU_FILE) else {}
 orders = json.load(open(ORDERS_FILE)) if os.path.exists(ORDERS_FILE) else []
 
 # PDF Bill Generator
-
-from reportlab.pdfgen import canvas
-import os
-
 def generate_bill_pdf(order):
-    # Define path and ensure directory exists
     filename = f"bill_table_{order['table']}.pdf"
-    output_dir = "/mnt/data"
-    os.makedirs(output_dir, exist_ok=True)  # ✅ ensure the directory exists
+
+    # Use temporary directory (safe on all systems)
+    output_dir = tempfile.gettempdir()
     file_path = os.path.join(output_dir, filename)
 
     c = canvas.Canvas(file_path)
@@ -191,9 +188,10 @@ if st.session_state.cart:
 else:
     st.info("🧺 Your cart is empty.")
 
-# Order History
+# Order history section
 st.markdown("<div class='section-header'>📦 Order History</div>", unsafe_allow_html=True)
 found = False
+
 for order in reversed(orders):
     if order["table"] == st.session_state.table_number:
         found = True
@@ -201,21 +199,29 @@ for order in reversed(orders):
         for name, item in order["items"].items():
             st.markdown(f"{name} × {item['quantity']} = ₹{item['price'] * item['quantity']}")
         
-        if order["status"] == "Pending":
-            if st.button(f"❌ Cancel Order ({order['timestamp']})", key=f"cancel-{order['timestamp']}"):
+        # Add billing PDF option for completed orders
+        if order["status"] == "Completed":
+            bill_path = generate_bill_pdf(order)
+            with open(bill_path, "rb") as bill_file:
+                st.download_button(
+                    label="📄 Download Bill PDF",
+                    data=bill_file,
+                    file_name=os.path.basename(bill_path),
+                    mime="application/pdf"
+                )
+
+        if order["status"] not in ["Completed", "Cancelled"]:
+            if st.button(f"❌ Cancel Order ({order['timestamp']})", key=order["timestamp"]):
                 order["status"] = "Cancelled"
                 with open(ORDERS_FILE, "w") as f:
                     json.dump(orders, f, indent=2)
                 st.warning("🚫 Order Cancelled.")
                 st.rerun()
-        elif order["status"] == "Completed":
-            bill_path = generate_bill_pdf(order)
-            st.success("✅ Order Completed. [Click to Download Bill](%s)" % bill_path)
-            st.markdown(f"[📥 Download Bill PDF]({bill_path})", unsafe_allow_html=True)
         st.markdown("---")
 
 if not found:
     st.info("📭 No previous orders found.")
+
 
 # Auto refresh
 with st.empty():
