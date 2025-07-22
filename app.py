@@ -6,57 +6,39 @@ from datetime import datetime
 from streamlit_lottie import st_lottie
 import requests
 
-# Page config
-st.set_page_config(page_title="Smart Table Order", layout="wide")
+# Set page config
+st.set_page_config(page_title="Smart Table Order", layout="wide", page_icon="🍽️")
 
-# CSS styles
-custom_css = """
+# Hide sidebar and default styling
+st.markdown("""
     <style>
         [data-testid="stSidebar"] { display: none; }
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
-        html, body {
-            font-size: 18px;
-            font-family: 'Segoe UI', sans-serif;
+        .title-style {
+            font-size: 36px;
+            font-weight: bold;
+            text-align: center;
+            color: #ff4b4b;
         }
-        .stButton>button {
-            height: 3em;
-            width: 100%;
-            font-size: 18px;
-            border-radius: 10px;
-            transition: 0.3s;
-        }
-        .stButton>button:hover {
-            background-color: #ff4b4b;
-            color: white;
-            transform: scale(1.03);
-        }
-        .stMarkdown {
-            font-size: 18px;
-        }
-        .glass {
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 20px;
-            padding: 1.5em;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+        .subheader-style {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333333;
         }
     </style>
-"""
-st.markdown(custom_css, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-# Lottie helper
+# Load Lottie animation from URL
 def load_lottie_url(url):
     r = requests.get(url)
-    if r.status_code == 200:
-        return r.json()
-    else:
+    if r.status_code != 200:
         return None
+    return r.json()
 
-# Load animation
-order_anim = load_lottie_url("https://assets4.lottiefiles.com/packages/lf20_dyteqdpp.json")
+lottie_food = load_lottie_url("https://assets4.lottiefiles.com/packages/lf20_dglA3h.json")
 
-# Paths
+# Get paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MENU_FILE = os.path.join(BASE_DIR, "menu.json")
 ORDERS_FILE = os.path.join(BASE_DIR, "orders.json")
@@ -76,83 +58,65 @@ if os.path.exists(ORDERS_FILE):
 else:
     orders = []
 
-# Table number prompt
+# Ask for table number
 if "table_number" not in st.session_state:
-    col1, col2 = st.columns([2, 3])
-    with col1:
-        st_lottie(order_anim, height=300, key="start_anim")
-    with col2:
-        st.title("🍽️ Smart Table Order")
-        table_number = st.text_input("🔢 Enter your Table Number")
-        if table_number:
-            st.session_state.table_number = table_number
-            st.session_state.cart = {}
-            st.rerun()
+    st_lottie(lottie_food, height=200, key="welcome")
+    st.markdown("<div class='title-style'>🍽️ Smart Table Ordering System</div>", unsafe_allow_html=True)
+    table_number = st.text_input("🕧 Enter your Table Number")
+    if table_number:
+        st.session_state.table_number = table_number
+        st.session_state.cart = {}
+        st.rerun()
 else:
-    st.title(f"🍽️ Welcome — Table {st.session_state.table_number}")
+    st.markdown(f"<div class='title-style'>🍽️ Table {st.session_state.table_number} - Menu</div>", unsafe_allow_html=True)
 
+# Initialize cart
 if "cart" not in st.session_state:
     st.session_state.cart = {}
 
-alert = st.empty()
-
-# Menu
-st.subheader("📋 Menu")
+# Show menu
+st.markdown("<div class='subheader-style'>📋 Menu</div>", unsafe_allow_html=True)
 for category, items in menu.items():
-    with st.expander(f"🍴 {category}", expanded=True):
+    with st.expander(category):
         for item in items:
             name = item["name"]
             price = item["price"]
 
             col1, col2, col3, col4 = st.columns([5, 1, 1, 2])
+
             with col1:
                 st.markdown(f"**{name}** — ₹{price}")
+
             with col2:
                 if st.button("➖", key=f"minus-{category}-{name}"):
                     if name in st.session_state.cart:
                         if st.session_state.cart[name]["quantity"] > 1:
                             st.session_state.cart[name]["quantity"] -= 1
-                            st.toast(f"➖ Decreased {name}", icon="➖")
                         else:
                             del st.session_state.cart[name]
-                            st.toast(f"❌ Removed {name}", icon="🗑️")
                     st.rerun()
+
             with col3:
                 if st.button("➕", key=f"plus-{category}-{name}"):
                     if name not in st.session_state.cart:
                         st.session_state.cart[name] = {"price": price, "quantity": 1}
-                        st.toast(f"✔️ Added {name}", icon="🛒")
                     else:
                         st.session_state.cart[name]["quantity"] += 1
-                        st.toast(f"➕ Increased {name}", icon="🛒")
                     st.rerun()
+
             with col4:
                 qty = st.session_state.cart[name]["quantity"] if name in st.session_state.cart else 0
                 st.markdown(f"Qty: {qty}")
 
-# Cart display
-st.subheader("🛒 Your Cart")
+# Show cart
+st.markdown("<div class='subheader-style'>🛒 Cart</div>", unsafe_allow_html=True)
 if st.session_state.cart:
     total = 0
     for name, item in list(st.session_state.cart.items()):
-        col1, col2, col3, col4 = st.columns([4, 1, 1, 2])
+        col1, col2 = st.columns([6, 2])
         with col1:
             st.markdown(f"**{name}** x {item['quantity']}")
         with col2:
-            if st.button("➖", key=f"dec-{name}"):
-                if item["quantity"] > 1:
-                    st.session_state.cart[name]["quantity"] -= 1
-                    st.toast(f"➖ Decreased {name}")
-                else:
-                    del st.session_state.cart[name]
-                    st.toast(f"❌ Removed {name}")
-                st.rerun()
-        with col3:
-            if st.button("➕", key=f"inc-{name}"):
-                st.session_state.cart[name]["quantity"] += 1
-                st.toast(f"➕ Increased {name}")
-                st.rerun()
-        with col4:
             subtotal = item["price"] * item["quantity"]
             total += subtotal
             st.markdown(f"₹{subtotal}")
@@ -160,10 +124,7 @@ if st.session_state.cart:
     st.markdown(f"### 🧾 Total: ₹{total}")
 
     if st.button("✅ Place Order"):
-        # Remove existing orders from same table
         orders = [o for o in orders if o["table"] != st.session_state.table_number]
-
-        # New order
         order = {
             "table": st.session_state.table_number,
             "items": st.session_state.cart,
@@ -179,10 +140,10 @@ if st.session_state.cart:
         del st.session_state.cart
         st.rerun()
 else:
-    st.info("🛍️ Your cart is empty.")
+    st.info("🏍️ Your cart is empty.")
 
-# Order History
-st.subheader("📦 Order History")
+# Show order history
+st.markdown("<div class='subheader-style'>📦 Your Orders</div>", unsafe_allow_html=True)
 found = False
 for order in reversed(orders):
     if order["table"] == st.session_state.table_number:
@@ -201,12 +162,12 @@ for order in reversed(orders):
                 order["status"] = "Cancelled"
                 with open(ORDERS_FILE, "w") as f:
                     json.dump(orders, f, indent=2)
-                st.warning("⚠️ Order has been cancelled.")
+                st.warning("⚠️ Order cancelled.")
                 st.rerun()
         st.markdown("---")
 
 if not found:
-    st.info("📭 No previous orders.")
+    st.info("📬 No orders found.")
 
 # Auto-refresh
 with st.empty():
