@@ -35,7 +35,7 @@ if os.path.exists(ORDERS_FILE):
 else:
     orders = []
 
-# Ask for table number (shown on main page)
+# Ask for table number
 if "table_number" not in st.session_state:
     st.title("🍽️ Smart Table Ordering System")
     table_number = st.text_input("🔢 Enter your Table Number")
@@ -67,6 +67,7 @@ for category, items in menu.items():
                     else:
                         st.session_state.cart[name]["quantity"] += 1
                     st.rerun()
+
 # Show cart
 st.subheader("🛒 Cart")
 if st.session_state.cart:
@@ -95,25 +96,6 @@ if st.session_state.cart:
 
     if st.button("✅ Place Order"):
         # Remove old orders for this table
-        orders = [o for o in orders if o["table"] != st.session_state.table_number]
-
-        # Add new order
-        order = {
-            "table": st.session_state.table_number,
-            "items": st.session_state.cart,
-            "status": "Pending",
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        }
-        orders.append(order)
-        with open(ORDERS_FILE, "w") as f:
-            json.dump(orders, f, indent=2)
-
-        st.success("✅ Order Placed!")
-        del st.session_state.cart
-        st.rerun()
-else:
-    st.info("🛍️ Your cart is empty.")
-
         orders = [o for o in orders if o["table"] != st.session_state.table_number]
 
         # Add new order
