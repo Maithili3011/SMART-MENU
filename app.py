@@ -67,9 +67,15 @@ orders = json.load(open(ORDERS_FILE)) if os.path.exists(ORDERS_FILE) else []
 
 # PDF Bill Generator
 
+from reportlab.pdfgen import canvas
+import os
+
 def generate_bill_pdf(order):
+    # Define path and ensure directory exists
     filename = f"bill_table_{order['table']}.pdf"
-    file_path = f"/mnt/data/{filename}"
+    output_dir = "/mnt/data"
+    os.makedirs(output_dir, exist_ok=True)  # ✅ ensure the directory exists
+    file_path = os.path.join(output_dir, filename)
 
     c = canvas.Canvas(file_path)
     c.setFont("Helvetica-Bold", 16)
@@ -105,6 +111,7 @@ def generate_bill_pdf(order):
 
     c.save()
     return file_path
+
 
 # Welcome
 if "table_number" not in st.session_state:
