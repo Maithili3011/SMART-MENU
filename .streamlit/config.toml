@@ -1,1 +1,7 @@
-haa
+[theme]
+base="dark"
+primaryColor="#80cbc4"              # soft teal
+backgroundColor="#121212"           # deep dark gray
+secondaryBackgroundColor="#1e1e1e"  # slightly lighter for cards
+textColor="#e0e0e0"                 # soft white
+font="sans serif"
