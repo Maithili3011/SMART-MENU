@@ -1,15 +1,27 @@
 {
   "Starters": [
-    {"name": "Paneer Tikka", "price": 120},
-    {"name": "Spring Rolls", "price": 100}
+    {"name": "Paneer Tikka", "price": 180},
+    {"name": "Veg Spring Roll", "price": 150},
+    {"name": "Chicken Lollipop", "price": 200}
   ],
   "Main Course": [
-    {"name": "Butter Chicken", "price": 250},
-    {"name": "Veg Biryani", "price": 180},
-    {"name": "Paneer Handi", "price": 230}
+    {"name": "Butter Chicken", "price": 280},
+    {"name": "Paneer Butter Masala", "price": 250},
+    {"name": "Dal Tadka", "price": 160}
+  ],
+  "Breads": [
+    {"name": "Naan", "price": 30},
+    {"name": "Butter Roti", "price": 20},
+    {"name": "Garlic Naan", "price": 40}
   ],
   "Beverages": [
-    {"name": "Coke", "price": 40},
-    {"name": "Mango Lassi", "price": 60}
+    {"name": "Masala Chai", "price": 20},
+    {"name": "Cold Coffee", "price": 60},
+    {"name": "Sweet Lassi", "price": 50}
+  ],
+  "Desserts": [
+    {"name": "Gulab Jamun", "price": 50},
+    {"name": "Ice Cream", "price": 80},
+    {"name": "Rasgulla", "price": 60}
   ]
 }
