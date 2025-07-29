@@ -193,35 +193,31 @@ latest_completed_order = next(
 if latest_completed_order:
     st.subheader("💬 Feedback")
 
-    # Input: Name
     name = st.text_input("Your Name", key="feedback_name")
 
-    # Clickable Star Rating
+    # Clickable Emoji Star Rating
     st.markdown("**How was your experience?**")
     if "feedback_rating" not in st.session_state:
-        st.session_state.feedback_rating = 3  # default
+        st.session_state.feedback_rating = 3  # Default to 3 stars
 
-    stars = ""
     cols = st.columns(5)
     for i in range(5):
         with cols[i]:
-            if st.button("★" if i < st.session_state.feedback_rating else "☆", key=f"star_{i}"):
+            star_icon = "⭐️" if i < st.session_state.feedback_rating else "✩"
+            if st.button(star_icon, key=f"star_{i}"):
                 st.session_state.feedback_rating = i + 1
 
-    # Display selected rating
     selected_rating = st.session_state.feedback_rating
-    st.markdown(f"**You selected:** {'★' * selected_rating + '☆' * (5 - selected_rating)}")
+    st.markdown(f"**You selected:** {'⭐️' * selected_rating + '✩' * (5 - selected_rating)}")
 
-    # Input: Message
     message = st.text_area("Any comments or suggestions?", key="feedback_message")
 
-    # Submit button
     if st.button("📩 Submit Feedback", key="feedback_submit"):
         if name and message:
-            # Remove previous feedback for this table
+            # Delete previous feedback for this table
             feedback = [f for f in feedback if f["table"] != st.session_state.table_number]
 
-            # Add new feedback
+            # Save new feedback
             feedback.append({
                 "table": st.session_state.table_number,
                 "name": name,
@@ -230,7 +226,6 @@ if latest_completed_order:
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             })
 
-            # Save to file
             with open(FEEDBACK_FILE, "w", encoding="utf-8") as f:
                 json.dump(feedback, f, indent=2)
 
@@ -239,6 +234,7 @@ if latest_completed_order:
             st.rerun()
         else:
             st.warning("Please enter both name and feedback.")
+
 
 # -------------- Auto-refresh every 10 seconds --------------
 with st.empty():
