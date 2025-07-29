@@ -192,16 +192,30 @@ latest_completed_order = next(
 
 if latest_completed_order:
     st.subheader("💬 Feedback")
+
+    # Input: Name
     name = st.text_input("Your Name", key="feedback_name")
-    rating = st.slider("How was your experience?", 1, 5, 3, key="feedback_rating")
 
-    # Display stars based on rating
-    filled_stars = "★" * rating
-    empty_stars = "☆" * (5 - rating)
-    st.markdown(f"**Your Rating:** {filled_stars}{empty_stars}")
+    # Clickable Star Rating
+    st.markdown("**How was your experience?**")
+    if "feedback_rating" not in st.session_state:
+        st.session_state.feedback_rating = 3  # default
 
+    stars = ""
+    cols = st.columns(5)
+    for i in range(5):
+        with cols[i]:
+            if st.button("★" if i < st.session_state.feedback_rating else "☆", key=f"star_{i}"):
+                st.session_state.feedback_rating = i + 1
+
+    # Display selected rating
+    selected_rating = st.session_state.feedback_rating
+    st.markdown(f"**You selected:** {'★' * selected_rating + '☆' * (5 - selected_rating)}")
+
+    # Input: Message
     message = st.text_area("Any comments or suggestions?", key="feedback_message")
 
+    # Submit button
     if st.button("📩 Submit Feedback", key="feedback_submit"):
         if name and message:
             # Remove previous feedback for this table
@@ -211,7 +225,7 @@ if latest_completed_order:
             feedback.append({
                 "table": st.session_state.table_number,
                 "name": name,
-                "rating": rating,
+                "rating": selected_rating,
                 "message": message,
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             })
