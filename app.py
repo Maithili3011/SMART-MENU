@@ -194,14 +194,20 @@ if latest_completed_order:
     st.subheader("💬 Feedback")
     name = st.text_input("Your Name", key="feedback_name")
     rating = st.slider("How was your experience?", 1, 5, 3, key="feedback_rating")
+
+    # Display stars based on rating
+    filled_stars = "★" * rating
+    empty_stars = "☆" * (5 - rating)
+    st.markdown(f"**Your Rating:** {filled_stars}{empty_stars}")
+
     message = st.text_area("Any comments or suggestions?", key="feedback_message")
 
     if st.button("📩 Submit Feedback", key="feedback_submit"):
         if name and message:
-            # Remove previous feedback for the current table
+            # Remove previous feedback for this table
             feedback = [f for f in feedback if f["table"] != st.session_state.table_number]
 
-            # Append new feedback
+            # Add new feedback
             feedback.append({
                 "table": st.session_state.table_number,
                 "name": name,
@@ -210,7 +216,7 @@ if latest_completed_order:
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             })
 
-            # Save updated feedback list
+            # Save to file
             with open(FEEDBACK_FILE, "w", encoding="utf-8") as f:
                 json.dump(feedback, f, indent=2)
 
@@ -219,7 +225,6 @@ if latest_completed_order:
             st.rerun()
         else:
             st.warning("Please enter both name and feedback.")
-
 
 # -------------- Auto-refresh every 10 seconds --------------
 with st.empty():
