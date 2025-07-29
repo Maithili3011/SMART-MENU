@@ -183,27 +183,43 @@ for order in reversed(orders):
 if not found:
     st.info("📭 No orders found.")
     
-# -------------- Feedback Form (Shown Only After Completion) --------------
-if any(order["table"] == st.session_state.table_number and order["status"] == "Completed" for order in orders):
-    if not any(fb["table"] == st.session_state.table_number and fb["timestamp"].startswith(order["timestamp"][:16]) for fb in feedback):
-        st.subheader("💬 Feedback")
-        name = st.text_input("Your Name")
-        rating = st.slider("How was your experience?", 1, 5, 3)
-        message = st.text_area("Any comments or suggestions?")
-        if st.button("📩 Submit Feedback"):
-            if name and message:
-                feedback.append({
-                    "table": st.session_state.table_number,
-                    "name": name,
-                    "rating": rating,
-                    "message": message,
-                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                })
-                with open(FEEDBACK_FILE, "w", encoding="utf-8") as f:
-                    json.dump(feedback, f, indent=2)
-                st.success("🎉 Thank you for your feedback!")
-            else:
-                st.warning("Please enter both name and feedback.")
+# -------------- Feedback Form (Only after Order Completed) --------------
+latest_completed_order = next(
+    (o for o in reversed(orders)
+     if o["table"] == st.session_state.table_number and o["status"] == "Completed"),
+    None
+)
+
+if latest_completed_order:
+    st.subheader("💬 Feedback")
+    name = st.text_input("Your Name", key="feedback_name")
+    rating = st.slider("How was your experience?", 1, 5, 3, key="feedback_rating")
+    message = st.text_area("Any comments or suggestions?", key="feedback_message")
+
+    if st.button("📩 Submit Feedback", key="feedback_submit"):
+        if name and message:
+            # Remove previous feedback for the current table
+            feedback = [f for f in feedback if f["table"] != st.session_state.table_number]
+
+            # Append new feedback
+            feedback.append({
+                "table": st.session_state.table_number,
+                "name": name,
+                "rating": rating,
+                "message": message,
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
+
+            # Save updated feedback list
+            with open(FEEDBACK_FILE, "w", encoding="utf-8") as f:
+                json.dump(feedback, f, indent=2)
+
+            st.success("🎉 Thank you for your feedback!")
+            time.sleep(2)
+            st.rerun()
+        else:
+            st.warning("Please enter both name and feedback.")
+
 
 # -------------- Auto-refresh every 10 seconds --------------
 with st.empty():
