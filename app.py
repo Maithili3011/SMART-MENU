@@ -46,10 +46,11 @@ def generate_invoice(order):
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
     pdf.cell(0, 10, "Smart Café Invoice", ln=True, align="C")
-    
+
     pdf.set_font("Arial", "", 12)
     pdf.cell(0, 10, f"Table: {order['table']}", ln=True)
     pdf.cell(0, 10, f"Date: {order['timestamp']}", ln=True)
+    pdf.cell(0, 10, f"Payment Method: {order.get('payment', 'N/A')}", ln=True)
     pdf.ln(10)
 
     pdf.set_font("Arial", "B", 12)
@@ -139,13 +140,16 @@ if st.session_state.cart:
 
     st.markdown(f"### 🧾 Total: ₹{total}")
 
+    payment_mode = st.selectbox("💳 Select Payment Method", ["Cash", "Card", "Online"], key="payment_method")
+
     if st.button("✅ Place Order"):
         orders = [o for o in orders if o["table"] != st.session_state.table_number]
         new_order = {
             "table": st.session_state.table_number,
             "items": st.session_state.cart,
             "status": "pending",
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "payment": payment_mode
         }
         orders.append(new_order)
         with open(ORDERS_FILE, "w", encoding="utf-8") as f:
@@ -163,7 +167,11 @@ for order in reversed(orders):
     if order["table"] == st.session_state.table_number:
         found = True
         status = order["status"]
+        payment = order.get("payment", "Not Specified")
         st.markdown(f"🕒 *{order['timestamp']}* — **Status:** `{status}`")
+        st.markdown(f"💰 **Payment Mode:** `{payment}`")
+        if payment == "Cash":
+            st.warning(f"⚠️ Table {order['table']} has requested to pay by **Cash**.")
 
         for name, item in order["items"].items():
             st.markdown(f"{name} x {item['quantity']} = ₹{item['price'] * item['quantity']}")
@@ -182,7 +190,7 @@ for order in reversed(orders):
 
 if not found:
     st.info("📭 No orders found.")
-    
+
 # -------------- Feedback Form (Only after Order Completed) --------------
 latest_completed_order = next(
     (o for o in reversed(orders)
@@ -193,34 +201,41 @@ latest_completed_order = next(
 if latest_completed_order:
     st.subheader("💬 Feedback")
     name = st.text_input("Your Name", key="feedback_name")
-    rating = st.slider("How was your experience?", 1, 5, 3, key="feedback_rating")
+
+    # Clickable Emoji Star Rating
+    st.markdown("**How was your experience?**")
+    if "feedback_rating" not in st.session_state:
+        st.session_state.feedback_rating = 3
+
+    cols = st.columns(5)
+    for i in range(5):
+        with cols[i]:
+            star_icon = "⭐️" if i < st.session_state.feedback_rating else "✩"
+            if st.button(star_icon, key=f"star_{i}"):
+                st.session_state.feedback_rating = i + 1
+
+    selected_rating = st.session_state.feedback_rating
+    st.markdown(f"**You selected:** {'⭐️' * selected_rating + '✩' * (5 - selected_rating)}")
+
     message = st.text_area("Any comments or suggestions?", key="feedback_message")
 
     if st.button("📩 Submit Feedback", key="feedback_submit"):
         if name and message:
-            # Remove previous feedback for the current table
             feedback = [f for f in feedback if f["table"] != st.session_state.table_number]
-
-            # Append new feedback
             feedback.append({
                 "table": st.session_state.table_number,
                 "name": name,
-                "rating": rating,
+                "rating": selected_rating,
                 "message": message,
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             })
-
-            # Save updated feedback list
             with open(FEEDBACK_FILE, "w", encoding="utf-8") as f:
                 json.dump(feedback, f, indent=2)
-
             st.success("🎉 Thank you for your feedback!")
             time.sleep(2)
             st.rerun()
         else:
             st.warning("Please enter both name and feedback.")
-
-
 
 # -------------- Auto-refresh every 10 seconds --------------
 with st.empty():
