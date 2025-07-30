@@ -34,10 +34,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -------------- Paths --------------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.abspath(_file_))
 MENU_FILE = os.path.join(BASE_DIR, "menu.json")
 ORDERS_FILE = os.path.join(BASE_DIR, "orders.json")
 FEEDBACK_FILE = os.path.join(BASE_DIR, "feedback.json")
+PAYMENT_FILE = os.path.join(BASE_DIR, "payments.json")
 QR_IMAGE = os.path.join(BASE_DIR, "qr.jpg")
 
 # -------------- Helper: Generate Invoice --------------
@@ -46,11 +47,10 @@ def generate_invoice(order):
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
     pdf.cell(0, 10, "Smart Café Invoice", ln=True, align="C")
-
+    
     pdf.set_font("Arial", "", 12)
     pdf.cell(0, 10, f"Table: {order['table']}", ln=True)
     pdf.cell(0, 10, f"Date: {order['timestamp']}", ln=True)
-    pdf.cell(0, 10, f"Payment Method: {order.get('payment', 'N/A')}", ln=True)
     pdf.ln(10)
 
     pdf.set_font("Arial", "B", 12)
@@ -90,6 +90,7 @@ def generate_invoice(order):
 menu = json.load(open(MENU_FILE)) if os.path.exists(MENU_FILE) else {}
 orders = json.load(open(ORDERS_FILE)) if os.path.exists(ORDERS_FILE) else []
 feedback = json.load(open(FEEDBACK_FILE)) if os.path.exists(FEEDBACK_FILE) else []
+payments = json.load(open(PAYMENT_FILE)) if os.path.exists(PAYMENT_FILE) else []
 
 # -------------- Table Number Session --------------
 if "table_number" not in st.session_state:
@@ -112,7 +113,7 @@ for category, items in menu.items():
         for item in items:
             col1, col2 = st.columns([6, 1])
             with col1:
-                st.markdown(f"**{item['name']}** — ₹{item['price']}")
+                st.markdown(f"*{item['name']}* — ₹{item['price']}")
             with col2:
                 if st.button("➕", key=f"{category}-{item['name']}"):
                     name, price = item["name"], item["price"]
@@ -130,7 +131,7 @@ if st.session_state.cart:
 
         col1, col2 = st.columns([6, 1])
         with col1:
-            st.markdown(f"**{name}** x {item['quantity']} = ₹{subtotal}")
+            st.markdown(f"*{name}* x {item['quantity']} = ₹{subtotal}")
         with col2:
             if st.button("➖", key=f"dec-{name}"):
                 st.session_state.cart[name]["quantity"] -= 1
@@ -140,16 +141,13 @@ if st.session_state.cart:
 
     st.markdown(f"### 🧾 Total: ₹{total}")
 
-    payment_mode = st.selectbox("💳 Select Payment Method", ["Cash", "Card", "Online"], key="payment_method")
-
     if st.button("✅ Place Order"):
         orders = [o for o in orders if o["table"] != st.session_state.table_number]
         new_order = {
             "table": st.session_state.table_number,
             "items": st.session_state.cart,
             "status": "pending",
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "payment": payment_mode
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         orders.append(new_order)
         with open(ORDERS_FILE, "w", encoding="utf-8") as f:
@@ -160,18 +158,16 @@ if st.session_state.cart:
 else:
     st.info("🛍️ Your cart is empty.")
 
-# -------------- Order History --------------
+# -------------- Order History, Invoice, Payment, Feedback --------------
 st.subheader("📦 Your Orders")
+feedback_given = False
 found = False
+
 for order in reversed(orders):
     if order["table"] == st.session_state.table_number:
         found = True
         status = order["status"]
-        payment = order.get("payment", "Not Specified")
-        st.markdown(f"🕒 *{order['timestamp']}* — **Status:** `{status}`")
-        st.markdown(f"💰 **Payment Mode:** `{payment}`")
-        if payment == "Cash":
-            st.warning(f"⚠️ Table {order['table']} has requested to pay by **Cash**.")
+        st.markdown(f"🕒 {order['timestamp']} — *Status:* {status}")
 
         for name, item in order["items"].items():
             st.markdown(f"{name} x {item['quantity']} = ₹{item['price'] * item['quantity']}")
@@ -182,7 +178,60 @@ for order in reversed(orders):
             with open(invoice_path, "rb") as f:
                 st.download_button("📄 Download Invoice", data=f.read(), file_name=os.path.basename(invoice_path))
 
-        if status == "Preparing" and "alerted" not in st.session_state:
+            # 🔻 Payment Method Selection
+            table_payment = next((p for p in payments if p["table"] == order["table"] and p["timestamp"] == order["timestamp"]), None)
+
+            if not table_payment:
+                st.subheader("💳 Select Payment Method")
+                payment_option = st.radio("Choose a payment method:", ["Cash", "Card", "Online"])
+                if st.button("💰 Confirm Payment"):
+                    payments.append({
+                        "table": order["table"],
+                        "method": payment_option,
+                        "timestamp": order["timestamp"]
+                    })
+                    with open(PAYMENT_FILE, "w", encoding="utf-8") as f:
+                        json.dump(payments, f, indent=2)
+                    st.success(f"✅ Payment method '{payment_option}' selected for Table {order['table']}")
+                    st.balloons()
+                    st.rerun()
+            else:
+                st.info(f"✅ Payment method *{table_payment['method']}* already submitted for Table {order['table']}")
+
+            # 💬 Feedback Section
+            st.markdown("---")
+            st.markdown("""
+                <div style="background-color:#f1faee; padding:20px; border-radius:10px; border:1px solid #a8dadc; box-shadow:2px 2px 8px rgba(0,0,0,0.1);">
+                    <h4 style="color:#1d3557;">💬 We'd love your feedback!</h4>
+                </div>
+            """, unsafe_allow_html=True)
+
+            with st.form("feedback_form"):
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    name = st.text_input("👤 Your Name", key="fb_name")
+                    message = st.text_area("✏️ Comments or Suggestions", key="fb_message", height=100)
+                with col2:
+                    rating = st.slider("⭐ Rating", 1, 5, 3, key="fb_rating")
+                    st.markdown(f"<p style='margin-top: 20px;'>Rate from 1 (Poor) to 5 (Excellent)</p>", unsafe_allow_html=True)
+
+                submitted = st.form_submit_button("📩 Submit Feedback")
+                if submitted:
+                    if name and message:
+                        feedback.append({
+                            "table": st.session_state.table_number,
+                            "name": name,
+                            "rating": rating,
+                            "message": message,
+                            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        })
+                        with open(FEEDBACK_FILE, "w", encoding="utf-8") as f:
+                            json.dump(feedback, f, indent=2)
+                        st.success("🎉 Thank you for your feedback!")
+                    else:
+                        st.warning("Please enter both your name and a comment.")
+
+        elif status == "Preparing" and "alerted" not in st.session_state:
             st.session_state.alerted = True
             st.audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg")
 
@@ -190,52 +239,6 @@ for order in reversed(orders):
 
 if not found:
     st.info("📭 No orders found.")
-
-# -------------- Feedback Form (Only after Order Completed) --------------
-latest_completed_order = next(
-    (o for o in reversed(orders)
-     if o["table"] == st.session_state.table_number and o["status"] == "Completed"),
-    None
-)
-
-if latest_completed_order:
-    st.subheader("💬 Feedback")
-    name = st.text_input("Your Name", key="feedback_name")
-
-    # Clickable Emoji Star Rating
-    st.markdown("**How was your experience?**")
-    if "feedback_rating" not in st.session_state:
-        st.session_state.feedback_rating = 3
-
-    cols = st.columns(5)
-    for i in range(5):
-        with cols[i]:
-            star_icon = "⭐️" if i < st.session_state.feedback_rating else "✩"
-            if st.button(star_icon, key=f"star_{i}"):
-                st.session_state.feedback_rating = i + 1
-
-    selected_rating = st.session_state.feedback_rating
-    st.markdown(f"**You selected:** {'⭐️' * selected_rating + '✩' * (5 - selected_rating)}")
-
-    message = st.text_area("Any comments or suggestions?", key="feedback_message")
-
-    if st.button("📩 Submit Feedback", key="feedback_submit"):
-        if name and message:
-            feedback = [f for f in feedback if f["table"] != st.session_state.table_number]
-            feedback.append({
-                "table": st.session_state.table_number,
-                "name": name,
-                "rating": selected_rating,
-                "message": message,
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            })
-            with open(FEEDBACK_FILE, "w", encoding="utf-8") as f:
-                json.dump(feedback, f, indent=2)
-            st.success("🎉 Thank you for your feedback!")
-            time.sleep(2)
-            st.rerun()
-        else:
-            st.warning("Please enter both name and feedback.")
 
 # -------------- Auto-refresh every 10 seconds --------------
 with st.empty():
