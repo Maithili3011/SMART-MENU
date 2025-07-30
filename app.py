@@ -192,40 +192,25 @@ latest_completed_order = next(
 
 if latest_completed_order:
     st.subheader("💬 Feedback")
-
     name = st.text_input("Your Name", key="feedback_name")
-
-    # Clickable Emoji Star Rating
-    st.markdown("**How was your experience?**")
-    if "feedback_rating" not in st.session_state:
-        st.session_state.feedback_rating = 3  # Default to 3 stars
-
-    cols = st.columns(5)
-    for i in range(5):
-        with cols[i]:
-            star_icon = "⭐️" if i < st.session_state.feedback_rating else "✩"
-            if st.button(star_icon, key=f"star_{i}"):
-                st.session_state.feedback_rating = i + 1
-
-    selected_rating = st.session_state.feedback_rating
-    st.markdown(f"**You selected:** {'⭐️' * selected_rating + '✩' * (5 - selected_rating)}")
-
+    rating = st.slider("How was your experience?", 1, 5, 3, key="feedback_rating")
     message = st.text_area("Any comments or suggestions?", key="feedback_message")
 
     if st.button("📩 Submit Feedback", key="feedback_submit"):
         if name and message:
-            # Delete previous feedback for this table
+            # Remove previous feedback for the current table
             feedback = [f for f in feedback if f["table"] != st.session_state.table_number]
 
-            # Save new feedback
+            # Append new feedback
             feedback.append({
                 "table": st.session_state.table_number,
                 "name": name,
-                "rating": selected_rating,
+                "rating": rating,
                 "message": message,
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             })
 
+            # Save updated feedback list
             with open(FEEDBACK_FILE, "w", encoding="utf-8") as f:
                 json.dump(feedback, f, indent=2)
 
@@ -234,6 +219,7 @@ if latest_completed_order:
             st.rerun()
         else:
             st.warning("Please enter both name and feedback.")
+
 
 
 # -------------- Auto-refresh every 10 seconds --------------
