@@ -169,6 +169,12 @@ else:
 
         st.markdown(f"**💰 Total: ₹{total}**")
 
+        # Show payment method if available
+        payment_mode = order.get("payment", "Not specified")
+        st.markdown(f"💳 **Payment Mode:** `{payment_mode}`")
+        if payment_mode == "Cash":
+            st.warning(f"⚠️ Table {table} has requested to pay by **Cash**.")
+
         st.markdown("---")
         new_status = st.selectbox("Change Status", [status] + [s for s in ["Pending", "Preparing", "Ready", "Completed"] if s != status], key=f"status_{idx}")
         if new_status != status and st.button("✅ Update", key=f"update_{idx}"):
@@ -200,6 +206,7 @@ if st.button("📥 Download Daily Report (CSV)"):
         "Table": o["table"],
         "Time": o["timestamp"],
         "Status": o["status"],
+        "Payment": o.get("payment", ""),
         "Total": sum(item["price"] * item["quantity"] for item in o["items"].values())
     } for o in orders])
     st.download_button("📄 Download CSV", df.to_csv(index=False), "orders_report.csv", "text/csv")
