@@ -34,11 +34,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -------------- Paths --------------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.abspath(_file_))
 MENU_FILE = os.path.join(BASE_DIR, "menu.json")
 ORDERS_FILE = os.path.join(BASE_DIR, "orders.json")
 FEEDBACK_FILE = os.path.join(BASE_DIR, "feedback.json")
-PAYMENT_FILE = os.path.join(BASE_DIR, "payments.json")
 QR_IMAGE = os.path.join(BASE_DIR, "qr.jpg")
 
 # -------------- Helper: Generate Invoice --------------
@@ -47,7 +46,7 @@ def generate_invoice(order):
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
     pdf.cell(0, 10, "Smart Café Invoice", ln=True, align="C")
-
+    
     pdf.set_font("Arial", "", 12)
     pdf.cell(0, 10, f"Table: {order['table']}", ln=True)
     pdf.cell(0, 10, f"Date: {order['timestamp']}", ln=True)
@@ -90,7 +89,6 @@ def generate_invoice(order):
 menu = json.load(open(MENU_FILE)) if os.path.exists(MENU_FILE) else {}
 orders = json.load(open(ORDERS_FILE)) if os.path.exists(ORDERS_FILE) else []
 feedback = json.load(open(FEEDBACK_FILE)) if os.path.exists(FEEDBACK_FILE) else []
-payments = json.load(open(PAYMENT_FILE)) if os.path.exists(PAYMENT_FILE) else []
 
 # -------------- Table Number Session --------------
 if "table_number" not in st.session_state:
@@ -141,24 +139,71 @@ if st.session_state.cart:
 
     st.markdown(f"### 🧾 Total: ₹{total}")
 
-    payment_mode = st.selectbox("💳 Select Payment Method", ["Cash", "Card", "Online"], key="payment_method")
-
     if st.button("✅ Place Order"):
         orders = [o for o in orders if o["table"] != st.session_state.table_number]
         new_order = {
             "table": st.session_state.table_number,
             "items": st.session_state.cart,
             "status": "pending",
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "payment": payment_mode
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         orders.append(new_order)
         with open(ORDERS_FILE, "w", encoding="utf-8") as f:
             json.dump(orders, f, indent=2)
         st.success("✅ Order Placed!")
-        if payment_mode == "Cash":
-            st.warning(f"⚠️ Table {st.session_state.table_number} has requested to pay by Cash.")
         del st.session_state.cart
         st.rerun()
 else:
     st.info("🛍️ Your cart is empty.")
+
+# -------------- Order History --------------
+st.subheader("📦 Your Orders")
+found = False
+for order in reversed(orders):
+    if order["table"] == st.session_state.table_number:
+        found = True
+        status = order["status"]
+        st.markdown(f"🕒 {order['timestamp']} — *Status:* {status}")
+
+        for name, item in order["items"].items():
+            st.markdown(f"{name} x {item['quantity']} = ₹{item['price'] * item['quantity']}")
+
+        if status == "Completed":
+            invoice_path = generate_invoice(order)
+            st.success("✅ Order Completed! Download your invoice below:")
+            with open(invoice_path, "rb") as f:
+                st.download_button("📄 Download Invoice", data=f.read(), file_name=os.path.basename(invoice_path))
+
+        if status == "Preparing" and "alerted" not in st.session_state:
+            st.session_state.alerted = True
+            st.audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg")
+
+        st.markdown("---")
+
+if not found:
+    st.info("📭 No orders found.")
+
+# -------------- Feedback Form --------------
+st.subheader("💬 Feedback")
+name = st.text_input("Your Name")
+rating = st.slider("How was your experience?", 1, 5, 3)
+message = st.text_area("Any comments or suggestions?")
+if st.button("📩 Submit Feedback"):
+    if name and message:
+        feedback.append({
+            "table": st.session_state.table_number,
+            "name": name,
+            "rating": rating,
+            "message": message,
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+        with open(FEEDBACK_FILE, "w", encoding="utf-8") as f:
+            json.dump(feedback, f, indent=2)
+        st.success("🎉 Thank you for your feedback!")
+    else:
+        st.warning("Please enter both name and feedback.")
+
+# -------------- Auto-refresh every 10 seconds --------------
+with st.empty():
+    time.sleep(10)
+    st.rerun()
