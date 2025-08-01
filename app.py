@@ -34,7 +34,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -------------- Paths --------------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # ✅ Fixed
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MENU_FILE = os.path.join(BASE_DIR, "menu.json")
 ORDERS_FILE = os.path.join(BASE_DIR, "orders.json")
 FEEDBACK_FILE = os.path.join(BASE_DIR, "feedback.json")
@@ -50,6 +50,7 @@ def generate_invoice(order):
     pdf.set_font("Arial", "", 12)
     pdf.cell(0, 10, f"Table: {order['table']}", ln=True)
     pdf.cell(0, 10, f"Date: {order['timestamp']}", ln=True)
+    pdf.cell(0, 10, f"Payment: {order.get('payment', 'N/A')}", ln=True)
     pdf.ln(10)
 
     pdf.set_font("Arial", "B", 12)
@@ -139,20 +140,31 @@ if st.session_state.cart:
 
     st.markdown(f"### 🧾 Total: ₹{total}")
 
+    payment_method = st.selectbox("💳 Select Payment Method", ["Cash", "Card", "Online"], key="payment_select")
+
     if st.button("✅ Place Order"):
-        orders = [o for o in orders if o["table"] != st.session_state.table_number]
-        new_order = {
-            "table": st.session_state.table_number,
-            "items": st.session_state.cart,
-            "status": "pending",
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        }
-        orders.append(new_order)
-        with open(ORDERS_FILE, "w", encoding="utf-8") as f:
-            json.dump(orders, f, indent=2)
-        st.success("✅ Order Placed!")
-        del st.session_state.cart
-        st.rerun()
+        if payment_method:
+            orders = [o for o in orders if o["table"] != st.session_state.table_number]
+            new_order = {
+                "table": st.session_state.table_number,
+                "items": st.session_state.cart,
+                "status": "pending",
+                "payment": payment_method,
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            orders.append(new_order)
+            with open(ORDERS_FILE, "w", encoding="utf-8") as f:
+                json.dump(orders, f, indent=2)
+
+            if payment_method == "Cash":
+                st.warning(f"🚨 Admin Alert: Table {st.session_state.table_number} selected **CASH** payment.")
+                st.audio("https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg", format="audio/ogg")
+
+            st.success("✅ Order Placed!")
+            del st.session_state.cart
+            st.rerun()
+        else:
+            st.error("❌ Please select a payment method.")
 else:
     st.info("🛍️ Your cart is empty.")
 
@@ -163,7 +175,7 @@ for order in reversed(orders):
     if order["table"] == st.session_state.table_number:
         found = True
         status = order["status"]
-        st.markdown(f"🕒 {order['timestamp']} — *Status:* {status}")
+        st.markdown(f"🕒 {order['timestamp']} — *Status:* {status} — *Payment:* {order.get('payment', 'N/A')}")
 
         for name, item in order["items"].items():
             st.markdown(f"{name} x {item['quantity']} = ₹{item['price'] * item['quantity']}")
