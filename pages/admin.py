@@ -7,9 +7,11 @@ from streamlit_autorefresh import st_autorefresh
 # Auto-refresh every 5 seconds
 st_autorefresh(interval=5000, key="admin_autorefresh")
 
-# File paths
-ORDERS_FILE = os.path.join(os.path.dirname(_file_), "..", "orders.json")
-MENU_FILE = os.path.join(os.path.dirname(_file_), "..", "menu.json")
+# File paths (✅ fixed _file_ → __file__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ORDERS_FILE = os.path.join(BASE_DIR, "..", "orders.json")
+MENU_FILE = os.path.join(BASE_DIR, "..", "menu.json")
+FEEDBACK_FILE = os.path.join(BASE_DIR, "..", "feedback.json")
 
 # Page settings
 st.set_page_config(page_title="Admin Panel", layout="wide")
@@ -74,13 +76,13 @@ def toast(message: str, duration=3000):
 # Load JSON safely
 def load_json(path, default):
     try:
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     except:
         return default
 
 def save_json(path, data):
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
 
 # Load data
@@ -149,7 +151,6 @@ else:
             st.markdown("</div>", unsafe_allow_html=True)
 
 # Feedback Viewer Section
-FEEDBACK_FILE = os.path.join(os.path.dirname(_file_), "..", "feedback.json")
 feedbacks = load_json(FEEDBACK_FILE, [])
 
 st.markdown("---")
