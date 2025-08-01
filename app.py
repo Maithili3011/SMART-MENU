@@ -34,7 +34,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -------------- Paths --------------
-BASE_DIR = os.path.dirname(os.path.abspath(_file_))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # ✅ Fixed
 MENU_FILE = os.path.join(BASE_DIR, "menu.json")
 ORDERS_FILE = os.path.join(BASE_DIR, "orders.json")
 FEEDBACK_FILE = os.path.join(BASE_DIR, "feedback.json")
@@ -86,9 +86,9 @@ def generate_invoice(order):
     return invoice_path
 
 # -------------- Load Data --------------
-menu = json.load(open(MENU_FILE)) if os.path.exists(MENU_FILE) else {}
-orders = json.load(open(ORDERS_FILE)) if os.path.exists(ORDERS_FILE) else []
-feedback = json.load(open(FEEDBACK_FILE)) if os.path.exists(FEEDBACK_FILE) else []
+menu = json.load(open(MENU_FILE, encoding="utf-8")) if os.path.exists(MENU_FILE) else {}
+orders = json.load(open(ORDERS_FILE, encoding="utf-8")) if os.path.exists(ORDERS_FILE) else []
+feedback = json.load(open(FEEDBACK_FILE, encoding="utf-8")) if os.path.exists(FEEDBACK_FILE) else []
 
 # -------------- Table Number Session --------------
 if "table_number" not in st.session_state:
