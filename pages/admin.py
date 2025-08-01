@@ -1,173 +1,178 @@
 import streamlit as st
 import json
 import os
-import pandas as pd
 from datetime import datetime
 from streamlit_autorefresh import st_autorefresh
-from fpdf import FPDF
 
 # Auto-refresh every 5 seconds
 st_autorefresh(interval=5000, key="admin_autorefresh")
 
 # File paths
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(_file_), ".."))
-ORDERS_FILE = os.path.join(BASE_DIR, "orders.json")
-MENU_FILE = os.path.join(BASE_DIR, "menu.json")
-FEEDBACK_FILE = os.path.join(BASE_DIR, "feedback.json")
-INVOICE_DIR = os.path.join(BASE_DIR, "invoices")
+ORDERS_FILE = os.path.join(os.path.dirname(_file_), "..", "orders.json")
+MENU_FILE = os.path.join(os.path.dirname(_file_), "..", "menu.json")
 
-# Ensure invoice directory exists
-os.makedirs(INVOICE_DIR, exist_ok=True)
+# Page settings
+st.set_page_config(page_title="Admin Panel", layout="wide")
+st.markdown("""
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .order-card {
+            background: #ffffff10;
+            padding: 1.2rem;
+            border-radius: 15px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            color: #fff;
+        }
+        .order-header {
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+        .status {
+            font-weight: bold;
+            padding: 4px 12px;
+            border-radius: 8px;
+        }
+        .Pending { background: #facc15; color: #000; }
+        .Preparing { background: #3b82f6; }
+        .Ready { background: #10b981; }
+        .Completed { background: #a3a3a3; }
+        .Cancelled { background: #ef4444; }
+        .item-line {
+            margin-left: 10px;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
-# Load orders
-orders = json.load(open(ORDERS_FILE)) if os.path.exists(ORDERS_FILE) else []
+st.title("🛠️ Admin Panel - Order Management")
 
-# Load menu and convert to dict
-if os.path.exists(MENU_FILE):
-    raw_menu = json.load(open(MENU_FILE))
-    menu = {item["id"]: item for item in raw_menu}
-else:
-    menu = {}
+# Toast function
+def toast(message: str, duration=3000):
+    st.markdown(f"""
+        <script>
+        const toast = document.createElement("div");
+        toast.textContent = "{message}";
+        toast.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #323232;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 15px;
+            z-index: 9999;
+            animation: fadein 0.3s, fadeout 0.3s ease {duration / 1000 - 0.3}s;
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), {duration});
+        </script>
+    """, unsafe_allow_html=True)
 
-# Sort orders by timestamp
-orders = sorted(orders, key=lambda x: x["timestamp"], reverse=True)
+# Load JSON safely
+def load_json(path, default):
+    try:
+        with open(path, "r") as f:
+            return json.load(f)
+    except:
+        return default
 
-st.title("🛠️ Admin Panel")
-st.caption("Real-time order tracking and management")
+def save_json(path, data):
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)
 
-status_colors = {
-    "Preparing": "orange",
-    "Ready": "green",
-    "Completed": "gray"
-}
+# Load data
+menu = load_json(MENU_FILE, {})
+orders = load_json(ORDERS_FILE, [])
 
-# Function to generate invoice PDF
-def generate_invoice(order, item_data, invoice_file):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
+# Track new orders
+if "order_count" not in st.session_state:
+    st.session_state.order_count = len(orders)
 
-    pdf.cell(200, 10, f"Invoice - Table {order['table']}", ln=True, align="C")
-    pdf.cell(200, 10, f"Date & Time: {order['timestamp']}", ln=True, align="C")
-    pdf.ln(10)
+if len(orders) > st.session_state.order_count:
+    toast("📦 New order received!")
+    st.session_state.order_count = len(orders)
 
-    total = 0
-    for row in item_data:
-        line = f"{row['Item']} x {row['Quantity']} = Rs. {row['Total']}"
-        pdf.cell(200, 10, txt=line, ln=True)
-        total += row["Total"]
+status_flow = ["Pending", "Preparing", "Ready", "Completed"]
 
-    pdf.ln(5)
-    pdf.cell(200, 10, txt=f"Total Amount: Rs. {total}", ln=True)
-
-    # Payment Method
-    if "payment" in order:
-        pdf.cell(200, 10, txt=f"Payment Method: {order['payment']}", ln=True)
-
-    pdf.output(invoice_file)
-
-# Admin order management
+# Display each order
 if not orders:
-    st.info("No orders found.")
+    st.info("📭 No orders yet.")
 else:
-    for idx, order in enumerate(orders):
+    for idx, order in reversed(list(enumerate(orders))):
+        table = order.get("table", "?")
+        timestamp = order.get("timestamp", "N/A")
+        status = order.get("status", "Pending")
+        items = order.get("items", {})
+
         with st.container():
+            st.markdown(f"<div class='order-card'>", unsafe_allow_html=True)
+            st.markdown(f"<div class='order-header'>🪑 Table {table} <span class='status {status}'>{status}</span></div>", unsafe_allow_html=True)
+            st.caption(f"🕒 {timestamp}")
+            st.markdown("#### 🧾 Ordered Items")
+
+            total = 0
+            for name, details in items.items():
+                qty = details.get("quantity", 0)
+                price = details.get("price", 0)
+                subtotal = price * qty
+                total += subtotal
+                st.markdown(f"<div class='item-line'>🍽️ {name} x {qty} = ₹{subtotal}</div>", unsafe_allow_html=True)
+
+            st.markdown(f"*💰 Total: ₹{total}*")
+
             st.markdown("---")
-            status = order["status"]
-            table = order["table"]
-            items = order["items"]
-            timestamp = order["timestamp"]
+            new_status = st.selectbox("Change Status", [status] + [s for s in status_flow if s != status], key=f"status_{idx}")
+            if new_status != status and st.button("✅ Update", key=f"update_{idx}"):
+                orders[idx]["status"] = new_status
+                save_json(ORDERS_FILE, orders)
+                toast(f"✅ Status changed to {new_status}")
+                st.rerun()
 
-            st.markdown(
-                f"<h4>🪑 Table: {table} | 🕒 {timestamp}</h4>",
-                unsafe_allow_html=True
-            )
-
-            st.markdown(
-                f"<span style='color:{status_colors.get(status, 'black')}; font-weight:bold;'>Status: {status}</span>",
-                unsafe_allow_html=True
-            )
-
-            # Show payment method if available
-            if "payment" in order:
-                st.markdown(
-                    f"💳 *Payment Method:* {order['payment']}"
-                )
-
-            # Item breakdown
-            item_data = []
-            for item_id, quantity in items.items():
-                item = menu.get(item_id, {"name": "Unknown", "price": 0})
-                item_data.append({
-                    "Item": item["name"],
-                    "Quantity": quantity,
-                    "Price": item["price"],
-                    "Total": quantity * item["price"]
-                })
-
-            st.dataframe(pd.DataFrame(item_data), use_container_width=True)
-
-            # Status change
-            if status != "Completed":
-                new_status = st.selectbox(
-                    f"Change status for Table {table}",
-                    ["Preparing", "Ready", "Completed"],
-                    index=["Preparing", "Ready", "Completed"].index(status),
-                    key=f"status_{idx}"
-                )
-                if new_status != status:
-                    order["status"] = new_status
-
-                    # Generate invoice if moved to Completed
-                    if new_status == "Completed":
-                        invoice_file = os.path.join(
-                            INVOICE_DIR, f"invoice_table{table}_{timestamp.replace(':', '-')}.pdf"
-                        )
-                        generate_invoice(order, item_data, invoice_file)
-                        order["invoice_path"] = invoice_file
-
-                    with open(ORDERS_FILE, "w", encoding="utf-8") as f:
-                        json.dump(orders, f, indent=2)
-                    st.success(f"✅ Status updated to '{new_status}'")
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("❌ Cancel Order", key=f"cancel_{idx}"):
+                    orders[idx]["status"] = "Cancelled"
+                    save_json(ORDERS_FILE, orders)
+                    toast("❌ Order cancelled")
                     st.rerun()
 
-            # Invoice download for completed orders
-            if status == "Completed":
-                invoice_path = order.get("invoice_path")
-                if invoice_path and os.path.exists(invoice_path):
-                    with open(invoice_path, "rb") as f:
-                        st.download_button(
-                            label="📄 Download Invoice",
-                            data=f.read(),
-                            file_name=os.path.basename(invoice_path),
-                            mime="application/pdf",
-                            key=f"invoice_{idx}"
-                        )
-                else:
-                    st.info("📄 Invoice not found or not generated yet.")
-
-                if st.button(f"🗑️ Delete Order (Table {table})", key=f"delete_{idx}"):
+            with col2:
+                if status == "Completed" and st.button("🗑️ Delete", key=f"delete_{idx}"):
                     orders.pop(idx)
-                    with open(ORDERS_FILE, "w", encoding="utf-8") as f:
-                        json.dump(orders, f, indent=2)
-                    st.success(f"🗑️ Order for Table {table} deleted.")
+                    save_json(ORDERS_FILE, orders)
+                    toast("🗑️ Order deleted")
                     st.rerun()
 
-# Feedback section
+            st.markdown("</div>", unsafe_allow_html=True)
+
+# Feedback Viewer Section
+FEEDBACK_FILE = os.path.join(os.path.dirname(_file_), "..", "feedback.json")
+feedbacks = load_json(FEEDBACK_FILE, [])
+
 st.markdown("---")
-st.subheader("💬 Customer Feedback")
+st.subheader("📝 Customer Feedback")
 
-if os.path.exists(FEEDBACK_FILE):
-    with open(FEEDBACK_FILE, "r", encoding="utf-8") as f:
-        feedback_data = json.load(f)
-
-    if feedback_data:
-        for entry in reversed(feedback_data):
-            table = entry.get("table", "Unknown")
-            message = entry.get("message", "")
-            timestamp = entry.get("timestamp", "Unknown")
-            st.info(f"🪑 Table {table} | 🕒 {timestamp}\n\n📩 {message}")
-    else:
-        st.write("No feedback submitted yet.")
+if not feedbacks:
+    st.info("No feedback received yet.")
 else:
-    st.write("Feedback file not found.")
+    for i, fb in enumerate(reversed(feedbacks)):
+        table = fb.get("table", "Unknown")
+        message = fb.get("message", "No message")
+        timestamp = fb.get("timestamp", "Unknown")
+
+        st.markdown(f"""
+            <div style='padding:1rem; margin-bottom:1rem; background:#1f2937; border-radius:10px; color:white;'>
+                <strong>🪑 Table {table}</strong>  
+                <div style='font-size: 0.9rem; color: #9ca3af;'>🕒 {timestamp}</div>
+                <div style='margin-top: 0.5rem;'>{message}</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        if st.button("🗑️ Delete Feedback", key=f"del_feedback_{i}"):
+            feedbacks.pop(len(feedbacks) - 1 - i)  # Correct reverse index
+            save_json(FEEDBACK_FILE, feedbacks)
+            toast("🗑️ Feedback deleted")
+            st.rerun()
