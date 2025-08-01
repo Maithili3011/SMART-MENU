@@ -3,6 +3,8 @@ import json
 import os
 from datetime import datetime
 from streamlit_autorefresh import st_autorefresh
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 
 # Auto-refresh every 5 seconds
 st_autorefresh(interval=5000, key="admin_autorefresh")
@@ -11,174 +13,150 @@ st_autorefresh(interval=5000, key="admin_autorefresh")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ORDERS_FILE = os.path.join(BASE_DIR, "..", "orders.json")
 MENU_FILE = os.path.join(BASE_DIR, "..", "menu.json")
-FEEDBACK_FILE = os.path.join(BASE_DIR, "..", "feedback.json")
 
-# Page settings
-st.set_page_config(page_title="Admin Panel", layout="wide")
-st.markdown("""
-    <style>
-        body {
-            font-family: 'Segoe UI', sans-serif;
-        }
-        .order-card {
-            background: #ffffff10;
-            padding: 1.2rem;
-            border-radius: 15px;
-            box-shadow: 0 6px 18px rgba(0,0,0,0.1);
-            margin-bottom: 2rem;
-            color: #fff;
-        }
-        .order-header {
-            font-size: 1.3rem;
-            font-weight: bold;
-        }
-        .status {
-            font-weight: bold;
-            padding: 4px 12px;
-            border-radius: 8px;
-        }
-        .Pending { background: #facc15; color: #000; }
-        .Preparing { background: #3b82f6; }
-        .Ready { background: #10b981; }
-        .Completed { background: #a3a3a3; }
-        .Cancelled { background: #ef4444; }
-        .item-line {
-            margin-left: 10px;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
-st.title("🛠️ Admin Panel - Order Management")
-
-# Toast function
-def toast(message: str, duration=3000):
-    st.markdown(f"""
-        <script>
-        const toast = document.createElement("div");
-        toast.textContent = "{message}";
-        toast.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #323232;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-size: 15px;
-            z-index: 9999;
-            animation: fadein 0.3s, fadeout 0.3s ease {duration / 1000 - 0.3}s;
-        `;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), {duration});
-        </script>
-    """, unsafe_allow_html=True)
-
-# Load JSON safely
-def load_json(path, default):
-    try:
-        with open(path, "r", encoding="utf-8") as f:
+# Load JSON
+def load_json(file_path):
+    if os.path.exists(file_path):
+        with open(file_path, "r") as f:
             return json.load(f)
-    except:
-        return default
+    return []
 
-def save_json(path, data):
-    with open(path, "w", encoding="utf-8") as f:
+# Save JSON
+def save_json(file_path, data):
+    with open(file_path, "w") as f:
         json.dump(data, f, indent=2)
 
-# Load data
-menu = load_json(MENU_FILE, {})
-orders = load_json(ORDERS_FILE, [])
+# PDF Generator
+def generate_invoice_pdf(order, save_dir="invoices"):
+    os.makedirs(save_dir, exist_ok=True)
+    filename = f"Invoice_Table{order['table']}_{order['timestamp'].replace(':','-').replace(' ','_')}.pdf"
+    filepath = os.path.join(save_dir, filename)
 
-# Track new orders
-if "order_count" not in st.session_state:
-    st.session_state.order_count = len(orders)
+    c = canvas.Canvas(filepath, pagesize=letter)
+    width, height = letter
 
-if len(orders) > st.session_state.order_count:
-    toast("📦 New order received!")
-    st.session_state.order_count = len(orders)
+    c.setFont("Helvetica-Bold", 18)
+    c.drawString(200, height - 50, "Customer Invoice")
 
-status_flow = ["Pending", "Preparing", "Ready", "Completed"]
+    c.setFont("Helvetica", 12)
+    c.drawString(50, height - 100, f"Table No: {order['table']}")
+    c.drawString(50, height - 120, f"Date & Time: {order['timestamp']}")
+    c.drawString(50, height - 140, f"Payment Method: {order.get('payment', 'N/A')}")
 
-# Display each order
+    c.drawString(50, height - 180, "Items Ordered:")
+    y = height - 200
+    total = 0
+
+    for name, item in order["items"].items():
+        qty = item["quantity"]
+        price = item["price"]
+        subtotal = qty * price
+        total += subtotal
+        c.drawString(60, y, f"{name} x {qty} = ₹{subtotal}")
+        y -= 20
+
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(50, y - 20, f"Total Amount: ₹{total}")
+    c.showPage()
+    c.save()
+    return filepath
+
+# Toast notification
+def toast(message):
+    st.toast(message, icon="✅")
+
+# App title
+st.set_page_config(page_title="Admin Panel", layout="wide")
+st.title("🛠️ Admin Panel")
+
+# Load orders and menu
+orders = load_json(ORDERS_FILE)
+menu = load_json(MENU_FILE)
+
+# Display current orders
+st.subheader("📦 Current Orders")
+
 if not orders:
-    st.info("📭 No orders yet.")
+    st.info("No orders yet.")
 else:
-    for idx, order in reversed(list(enumerate(orders))):
+    for idx, order in enumerate(reversed(orders)):
+        status = order.get("status", "Pending")
+        if status != "Completed":
+            table = order.get("table", "?")
+            timestamp = order.get("timestamp", "N/A")
+            items = order.get("items", {})
+            payment_method = order.get("payment", "N/A")
+            total = sum(details.get("price", 0) * details.get("quantity", 0) for details in items.values())
+
+            with st.container():
+                st.markdown(f"### 🪑 Table {table} - ⏳ {status}")
+                st.caption(f"🕒 {timestamp}")
+                st.markdown(f"💳 Payment Method: **{payment_method}**")
+                if payment_method == "Cash":
+                    st.markdown(f"<div style='color:yellow; font-weight:bold;'>⚠️ Customer will pay by CASH at Table {table}</div>", unsafe_allow_html=True)
+
+                st.markdown("#### 🍽️ Ordered Items")
+                for name, details in items.items():
+                    qty = details.get("quantity", 0)
+                    price = details.get("price", 0)
+                    subtotal = price * qty
+                    st.markdown(f"🔸 {name} x {qty} = ₹{subtotal}")
+
+                st.markdown(f"**💰 Total: ₹{total}**")
+
+                # Actions
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("✅ Mark as Completed", key=f"complete_{idx}"):
+                        orders[len(orders) - 1 - idx]["status"] = "Completed"
+                        save_json(ORDERS_FILE, orders)
+                        toast(f"Order from Table {table} marked as Completed")
+                        st.rerun()
+
+                with col2:
+                    if st.button("🗑️ Delete", key=f"delete_{idx}"):
+                        orders.pop(len(orders) - 1 - idx)
+                        save_json(ORDERS_FILE, orders)
+                        toast("Order deleted")
+                        st.rerun()
+
+# Divider
+st.markdown("---")
+st.subheader("📜 Order History (Completed Orders)")
+
+# Completed orders
+history_orders = [o for o in reversed(orders) if o.get("status") == "Completed"]
+if not history_orders:
+    st.info("No completed orders yet.")
+else:
+    for idx, order in enumerate(history_orders):
         table = order.get("table", "?")
         timestamp = order.get("timestamp", "N/A")
-        status = order.get("status", "Pending")
         items = order.get("items", {})
         payment_method = order.get("payment", "N/A")
+        total = sum(details.get("price", 0) * details.get("quantity", 0) for details in items.values())
 
-        with st.container():
-            st.markdown(f"<div class='order-card'>", unsafe_allow_html=True)
-            st.markdown(f"<div class='order-header'>🪑 Table {table} <span class='status {status}'>{status}</span></div>", unsafe_allow_html=True)
-            st.caption(f"🕒 {timestamp}")
+        with st.expander(f"🧾 Table {table} | {timestamp} | ₹{total}", expanded=False):
             st.markdown(f"💳 Payment Method: **{payment_method}**")
-            if payment_method == "Cash":
-                st.markdown(f"<div style='color:yellow; font-weight:bold;'>⚠️ Customer will pay by CASH at Table {table}</div>", unsafe_allow_html=True)
 
-            st.markdown("#### 🧾 Ordered Items")
-
-            total = 0
             for name, details in items.items():
                 qty = details.get("quantity", 0)
                 price = details.get("price", 0)
-                subtotal = price * qty
-                total += subtotal
-                st.markdown(f"<div class='item-line'>🍽️ {name} x {qty} = ₹{subtotal}</div>", unsafe_allow_html=True)
+                subtotal = qty * price
+                st.markdown(f"🔸 {name} x {qty} = ₹{subtotal}")
 
-            st.markdown(f"*💰 Total: ₹{total}*")
-
-            st.markdown("---")
-            new_status = st.selectbox("Change Status", [status] + [s for s in status_flow if s != status], key=f"status_{idx}")
-            if new_status != status and st.button("✅ Update", key=f"update_{idx}"):
-                orders[idx]["status"] = new_status
-                save_json(ORDERS_FILE, orders)
-                toast(f"✅ Status changed to {new_status}")
-                st.rerun()
+            st.markdown(f"**💰 Total: ₹{total}**")
 
             col1, col2 = st.columns(2)
             with col1:
-                if st.button("❌ Cancel Order", key=f"cancel_{idx}"):
-                    orders[idx]["status"] = "Cancelled"
-                    save_json(ORDERS_FILE, orders)
-                    toast("❌ Order cancelled")
-                    st.rerun()
+                if st.button("🧾 Generate Invoice", key=f"invoice_{idx}"):
+                    filepath = generate_invoice_pdf(order)
+                    with open(filepath, "rb") as f:
+                        st.download_button("📥 Download Invoice", data=f, file_name=os.path.basename(filepath), mime="application/pdf")
 
             with col2:
-                if status == "Completed" and st.button("🗑️ Delete", key=f"delete_{idx}"):
-                    orders.pop(idx)
+                if st.button("🗑️ Delete", key=f"delete_history_{idx}"):
+                    orders.remove(order)
                     save_json(ORDERS_FILE, orders)
-                    toast("🗑️ Order deleted")
+                    toast("🗑️ Order deleted from history")
                     st.rerun()
-
-            st.markdown("</div>", unsafe_allow_html=True)
-
-# Feedback Viewer Section
-feedbacks = load_json(FEEDBACK_FILE, [])
-
-st.markdown("---")
-st.subheader("📝 Customer Feedback")
-
-if not feedbacks:
-    st.info("No feedback received yet.")
-else:
-    for i, fb in enumerate(reversed(feedbacks)):
-        table = fb.get("table", "Unknown")
-        message = fb.get("message", "No message")
-        timestamp = fb.get("timestamp", "Unknown")
-
-        st.markdown(f"""
-            <div style='padding:1rem; margin-bottom:1rem; background:#1f2937; border-radius:10px; color:white;'>
-                <strong>🪑 Table {table}</strong>  
-                <div style='font-size: 0.9rem; color: #9ca3af;'>🕒 {timestamp}</div>
-                <div style='margin-top: 0.5rem;'>{message}</div>
-            </div>
-        """, unsafe_allow_html=True)
-
-        if st.button("🗑️ Delete Feedback", key=f"del_feedback_{i}"):
-            feedbacks.pop(len(feedbacks) - 1 - i)
-            save_json(FEEDBACK_FILE, feedbacks)
-            toast("🗑️ Feedback deleted")
-            st.rerun()
