@@ -7,7 +7,7 @@ from streamlit_autorefresh import st_autorefresh
 # Auto-refresh every 5 seconds
 st_autorefresh(interval=5000, key="admin_autorefresh")
 
-# File paths (✅ fixed _file_ → __file__)
+# File paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ORDERS_FILE = os.path.join(BASE_DIR, "..", "orders.json")
 MENU_FILE = os.path.join(BASE_DIR, "..", "menu.json")
@@ -108,11 +108,16 @@ else:
         timestamp = order.get("timestamp", "N/A")
         status = order.get("status", "Pending")
         items = order.get("items", {})
+        payment_method = order.get("payment", "N/A")
 
         with st.container():
             st.markdown(f"<div class='order-card'>", unsafe_allow_html=True)
             st.markdown(f"<div class='order-header'>🪑 Table {table} <span class='status {status}'>{status}</span></div>", unsafe_allow_html=True)
             st.caption(f"🕒 {timestamp}")
+            st.markdown(f"💳 Payment Method: **{payment_method}**")
+            if payment_method == "Cash":
+                st.markdown(f"<div style='color:yellow; font-weight:bold;'>⚠️ Customer will pay by CASH at Table {table}</div>", unsafe_allow_html=True)
+
             st.markdown("#### 🧾 Ordered Items")
 
             total = 0
@@ -173,7 +178,7 @@ else:
         """, unsafe_allow_html=True)
 
         if st.button("🗑️ Delete Feedback", key=f"del_feedback_{i}"):
-            feedbacks.pop(len(feedbacks) - 1 - i)  # Correct reverse index
+            feedbacks.pop(len(feedbacks) - 1 - i)
             save_json(FEEDBACK_FILE, feedbacks)
             toast("🗑️ Feedback deleted")
             st.rerun()
