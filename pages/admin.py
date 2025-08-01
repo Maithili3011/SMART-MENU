@@ -104,13 +104,22 @@ else:
 
                 st.markdown(f"**💰 Total: ₹{total}**")
 
-                # Actions
+                # Status update & Delete
                 col1, col2 = st.columns(2)
                 with col1:
-                    if st.button("✅ Mark as Completed", key=f"complete_{idx}"):
-                        orders[len(orders) - 1 - idx]["status"] = "Completed"
+                    current_status = order.get("status", "Pending")
+                    status_options = ["Pending", "Preparing", "Ready", "Completed"]
+                    new_status = st.selectbox(
+                        "Update Status",
+                        status_options,
+                        index=status_options.index(current_status),
+                        key=f"status_{idx}"
+                    )
+
+                    if new_status != current_status:
+                        orders[len(orders) - 1 - idx]["status"] = new_status
                         save_json(ORDERS_FILE, orders)
-                        toast(f"Order from Table {table} marked as Completed")
+                        toast(f"Order from Table {table} updated to '{new_status}'")
                         st.rerun()
 
                 with col2:
