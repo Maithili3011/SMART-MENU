@@ -109,7 +109,8 @@ def generate_invoice(order):
     pdf.cell(40, 10, f"Rs. {total}", 1)
     pdf.ln(20)
 
-    
+    if os.path.exists(QR_IMAGE):
+        pdf.image(QR_IMAGE, x=10, y=pdf.get_y(), w=40)
 
     invoice_path = os.path.join(BASE_DIR, f"invoice_table_{order['table']}.pdf")
     pdf.output(invoice_path)
