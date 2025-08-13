@@ -64,7 +64,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -------------- Paths --------------
-BASE_DIR = os.path.dirname(os.path.abspath(_file_))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MENU_FILE = os.path.join(BASE_DIR, "menu.json")
 ORDERS_FILE = os.path.join(BASE_DIR, "orders.json")
 FEEDBACK_FILE = os.path.join(BASE_DIR, "feedback.json")
@@ -161,7 +161,7 @@ for category, items in menu.items():
         for item in items:
             col1, col2 = st.columns([6, 1])
             with col1:
-                st.markdown(f"{item['name']} — ₹{item['price']}")
+                st.markdown(f"*{item['name']}* — ₹{item['price']}")
             with col2:
                 if st.button("➕", key=f"{category}-{item['name']}"):
                     name, price = item["name"], item["price"]
@@ -179,7 +179,7 @@ if st.session_state.cart:
 
         col1, col2 = st.columns([6, 1])
         with col1:
-            st.markdown(f"{name} x {item['quantity']} = ₹{subtotal}")
+            st.markdown(f"*{name}* x {item['quantity']} = ₹{subtotal}")
         with col2:
             if st.button("➖", key=f"dec-{name}"):
                 st.session_state.cart[name]["quantity"] -= 1
@@ -205,7 +205,7 @@ if st.session_state.cart:
                 json.dump(orders, f, indent=2)
 
             if payment_method == "Cash":
-                st.warning(f"🚨 Admin Alert: Table {st.session_state.table_number} selected *CASH* payment.")
+                st.warning(f"🚨 Admin Alert: Table {st.session_state.table_number} selected **CASH** payment.")
                 st.audio("https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg", format="audio/ogg")
 
             # ✅ Fancy animation popup on order placement
@@ -257,7 +257,7 @@ for order in reversed(orders):
     if order["table"] == st.session_state.table_number:
         found = True
         status = order["status"]
-        st.markdown(f"🕒 {order['timestamp']} — Status: {status} — Payment: {order.get('payment', 'N/A')}")
+        st.markdown(f"🕒 {order['timestamp']} — *Status:* {status} — *Payment:* {order.get('payment', 'N/A')}")
 
         for name, item in order["items"].items():
             st.markdown(f"{name} x {item['quantity']} = ₹{item['price'] * item['quantity']}")
