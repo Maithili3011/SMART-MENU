@@ -12,7 +12,7 @@ from reportlab.lib import colors
 st_autorefresh(interval=5000, key="admin_autorefresh")
 
 # File paths
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.abspath(_file_))
 ORDERS_FILE = os.path.join(BASE_DIR, "..", "orders.json")
 MENU_FILE = os.path.join(BASE_DIR, "..", "menu.json")
 FEEDBACK_FILE = os.path.join(BASE_DIR, "..", "feedback.json")
@@ -32,7 +32,7 @@ def save_json(file_path, data):
 # PDF Generator
 def generate_invoice_pdf(order, save_dir="invoices"):
     os.makedirs(save_dir, exist_ok=True)
-    filename = f"Invoice_Table{order['table']}_{order['timestamp'].replace(':','-').replace(' ','_')}.pdf"
+    filename = f"Invoice_Table{order['table']}{order['timestamp'].replace(':','-').replace(' ','')}.pdf"
     filepath = os.path.join(save_dir, filename)
 
     c = canvas.Canvas(filepath, pagesize=letter)
@@ -154,7 +154,7 @@ else:
             with st.container():
                 st.markdown(f"### 🪑 Table {table} - ⏳ {status}")
                 st.caption(f"🕒 {timestamp}")
-                st.markdown(f"💳 Payment Method: **{payment_method}**")
+                st.markdown(f"💳 Payment Method: *{payment_method}*")
                 if payment_method == "Cash":
                     st.markdown(f"<div style='color:yellow; font-weight:bold;'>⚠️ Customer will pay by CASH at Table {table}</div>", unsafe_allow_html=True)
 
@@ -165,7 +165,7 @@ else:
                     subtotal = price * qty
                     st.markdown(f"🔸 {name} x {qty} = ₹{subtotal}")
 
-                st.markdown(f"**💰 Total: ₹{total}**")
+                st.markdown(f"*💰 Total: ₹{total}*")
 
                 # Actions
                 col1, col2 = st.columns(2)
@@ -200,7 +200,7 @@ else:
         total = sum(details.get("price", 0) * details.get("quantity", 0) for details in items.values())
 
         with st.expander(f"🧾 Table {table} | {timestamp} | ₹{total}", expanded=False):
-            st.markdown(f"💳 Payment Method: **{payment_method}**")
+            st.markdown(f"💳 Payment Method: *{payment_method}*")
 
             for name, details in items.items():
                 qty = details.get("quantity", 0)
@@ -208,7 +208,7 @@ else:
                 subtotal = qty * price
                 st.markdown(f"🔸 {name} x {qty} = ₹{subtotal}")
 
-            st.markdown(f"**💰 Total: ₹{total}**")
+            st.markdown(f"*💰 Total: ₹{total}*")
 
             col1, col2 = st.columns(2)
             with col1:
@@ -240,7 +240,7 @@ else:
         time = fb.get("timestamp", "Unknown time")
 
         with st.chat_message("user"):
-            st.markdown(f"**🪑 Table {table}** — 🕒 {time}")
+            st.markdown(f"*🪑 Table {table}* — 🕒 {time}")
             st.write(f"⭐ Rating: {rating}")
             st.write(f"💬 {message}")
 
